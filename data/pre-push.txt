@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Define the size threshold (e.g., 100 MB)
+SIZE_THRESHOLD=100000000  # 100 MB in bytes
+
+# Function to check if a file exceeds the size threshold
+function is_large_file() {
+    local file="$1"
+    local size=$(stat -c %s "$file")
+    if [[ $size -gt $SIZE_THRESHOLD ]]; then
+        return 0  # True (file is large)
+    else
+        return 1  # False (file is not large)
+    fi
+}
+
+# Iterate over files about to be pushed
+while read local_ref local_sha remote_ref remote_sha; do
+    # Get the list of files changed between local and remote
+    changed_files=$(git diff --name-only "$local_sha" "$remote_sha")
+
+    # Iterate over changed files
+    for file in $changed_files; do
+        if is_large_file "$file"; then
+            # Compress the large file using gzip
+            gzip "$file"
+            echo "Compressed $file"
+        fi
+    done
+done
+
+# Exit with success
+exit 0
